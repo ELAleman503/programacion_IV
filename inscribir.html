@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administracion de Inscripciones</title>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+</head>
+<body>
+    <div class="appAcademica" id="appAcademica">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="#">::.ACADEMICA.::</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav">
+                        <li class="nav-item">
+                            <a class="nav-link" href="alumnos.html">Alumnos</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="materias.html">Materias</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" aria-current="page" href="inscribir.html">Inscripciones</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container-fluid">
+            <div class="card text-white" id="carCliente">
+                <div class="card-header bg-primary">
+                    Registro de Inscripciones
+
+                    <button type="button" class="btn-close text-end" data-bs-dismiss="alert" data-bs-target="#carCliente" aria-label="Close"></button>
+                </div>
+                <div class="card-body text-dark">
+                    <form method="post" @submit.prevent="guardarInscripcion" @reset="nuevaInscripcion">
+                        <div class="row p-1">
+                            <div class="col col-md-2">Alumno:</div>
+                            <div class="col col-md-6">
+                                <select class="form-control" v-model="inscripcion.alumno" v-bind:disabled="inscripcion.accion != 'nuevo'">
+                                    <option v-for="alumno in alumnos" :value="alumno.idAlumno">{{ alumno.codigo }} - {{alumno.nombre}}</option>
+                                </select>
+                            </div>
+                            <div class="col col-md-4">
+                                <span v-if="inscripcion.accion == 'modificar'">
+                                    Modificando a: {{ inscripcion.nombre_alumno }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="row p-1">
+                            <div class="col col-md-2">Materia:</div>
+                            <div class="col col-md-6">
+                                <select class="form-control" v-model="inscripcion.materias" multiple>
+                                    <option v-for="materia in materias" :value="materia.idMateria">{{ materia.codigo }} - {{materia.nombre}}</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row p-1">
+                            <div class="col col-md-5 text-center">
+                                <div v-if="inscripcion.mostrar_msg" class="alert alert-primary alert-dismissible fade show" role="alert">
+                                    {{ inscripcion.msg }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row m-2">
+                            <div class="col col-md-5 text-center">
+                                <input class="btn btn-success" type="submit" value="Guardar">
+                                <input class="btn btn-warning" type="reset" value="Nuevo">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="card text-white" id="carBuscarMateria">
+                <div class="card-header bg-primary">
+                    Busqueda de Inscripciones
+
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" data-bs-target="#carBuscarMateria" aria-label="Close"></button>
+                </div>
+                <div class="card-body">
+                    <table class="table table-dark table-hover">
+                        <thead>
+                            <tr>
+                                <th colspan="8">
+                                    Buscar: <input @keyup="buscandoInscripcion" v-model="buscar" placeholder="buscar aqui" class="form-control" type="text" >
+                                </th>
+                            </tr>
+                            <tr>
+                                <th>Alumno</th>
+                                <th>Materia</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="item in inscripciones" @click='modificarInscripcion( item )' :key="item.idInscripcion">
+                                <td>{{item.alumnos}}</td>
+                                <td>
+                                    <li v-for="materias in item.materias">
+                                        {{ materias }}
+                                    </li>
+                                </td>
+                                <td>
+                                    <button class="btn btn-danger" @click="eliminarInscripcion(item)">Eliminar</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" 
+        integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script>
+        const db_sistema = openDatabase('db_sistema', '1.0', 'Sistema', 5 * 1024 * 1024);
+        if( !db_sistema ){
+            alert('Lo siento, el navagador no soporta BD offline');
+        }
+        var app = new Vue({
+            el: '#appAcademica',
+            data:{
+                buscar:'',
+                materias:[],
+                alumnos:[],
+                inscripciones:[],
+                inscripcion:{
+                    accion : 'nuevo',
+                    mostrar_msg : false,
+                    msg : '',
+                    alumno : '',
+                    materias : []
+                }
+            },
+            methods:{
+                buscandoInscripcion(){
+                    this.obtenerInscripciones(this.buscar);
+                },
+                eliminarInscripcion(inscripcion){
+                    if( confirm(`Esta seguro de eliminar la inscripcion de ${inscripcion.alumno}?`) ){
+                        this.inscripcion.idInscripcion = inscripcion.idInscripcion;
+                        this.inscripcion.accion = 'eliminar';
+                        this.guardarInscripcion();
+                    }
+                },
+                modificarInscripcion(datos){
+                    console.log(datos);
+                    this.inscripcion.accion = 'modificar';
+                    this.inscripcion.idInscripcion = datos.idInscripcion;
+                    this.inscripcion.alumno = datos.idAlumno;
+                    this.inscripcion.idAlumno = datos.idAlumno;
+                    this.inscripcion.materias = datos.idMateria;
+                    this.inscripcion.nombre_alumno = datos.alumnos;
+                },
+                guardarInscripcion(){
+                    let sql = '',
+                        parametros = [];
+                    if(this.inscripcion.accion=="nuevo"){
+                        sql = 'INSERT INTO inscripciones (idAlumno, idMateria) VALUES (?,?)';
+                        for(let i=0; i<this.inscripcion.materias.length; i++){
+                            parametros.push([this.inscripcion.alumno, this.inscripcion.materias[i]]);
+                        }
+                    } else if(this.inscripcion.accion=="modificar"){
+                        db_sistema.transaction(tx => {
+                            tx.executeSql('DELETE FROM inscripciones WHERE idAlumno=?', [this.inscripcion.idAlumno]);
+                        });
+                        sql = 'INSERT INTO inscripciones (idAlumno, idMateria) VALUES (?,?)';
+                        for(let i=0; i<this.inscripcion.materias.length; i++){
+                            parametros.push([this.inscripcion.alumno, this.inscripcion.materias[i]]);
+                        }
+                    } else if(this.inscripcion.accion=="eliminar"){
+                        sql = 'DELETE FROM inscripciones WHERE idAlumno=?';
+                        parametros.push([this.inscripcion.idAlumno]);
+                    }
+                    console.log(parametros);
+                    db_sistema.transaction(tx=>{
+                        for(let i=0; i<parametros.length; i++){
+                            tx.executeSql(sql, parametros[i], (tx, res)=>{
+                                this.nuevaInscripcion();
+                                this.obtenerAlumnos();
+                                this.obtenerInscripciones();
+                                this.inscripcion.mostrar_msg = true;
+                                this.inscripcion.msg = 'Inscripción procesado con exito';
+                            }, (tx, err)=>{
+                                this.inscripcion.mostrar_msg = true;
+                                this.inscripcion.msg = `Error al guardar la inscripción: ${err.message}`;
+                            });
+                        }
+                    });
+                },
+                obtenerMaterias(valor=''){
+                    let respuesta = db_sistema.transaction(tx=>{
+                        tx.executeSql(`SELECT * FROM materias WHERE nombre like "%${valor}%" OR codigo like "%${valor}%" ORDER BY nombre`, [], (index, datos)=>{
+                            this.materias = [];
+                            for(let i=0; i<datos.rows.length; i++){
+                                this.materias.push(datos.rows[i]);
+                            }
+                        });
+                    });
+                },
+                obtenerAlumnos(valor=''){
+                    let respuesta = db_sistema.transaction(tx=>{
+                        tx.executeSql(`SELECT * FROM alumnos WHERE idAlumno NOT IN (SELECT idAlumno FROM inscripciones) ORDER BY nombre`, [], (index, datos)=>{
+                            this.alumnos = [];
+                            for(let i=0; i<datos.rows.length; i++){
+                                this.alumnos.push(datos.rows[i]);
+                            }
+                        });
+                    });
+                },
+                obtenerInscripciones(valor=''){
+                    let respuesta = db_sistema.transaction(tx=>{
+                        tx.executeSql(`SELECT GROUP_CONCAT(m.nombre) AS materias, GROUP_CONCAT(i.idMateria) AS idMateria, a.nombre AS alumnos, i.idAlumno FROM inscripciones i INNER JOIN materias m ON m.idMateria = i.idMateria INNER JOIN alumnos a ON a.idAlumno = i.idAlumno WHERE a.nombre like "%${valor}%" GROUP BY i.idAlumno ORDER BY a.nombre`, [], (index, datos)=>{
+                            this.inscripciones = [];
+                            console.log(datos);
+                            for(let i=0; i<datos.rows.length; i++){
+                                this.inscripciones.push(datos.rows[i]);
+                            }
+                            for(let i=0; i<this.inscripciones.length; i++){
+                                this.inscripciones[i].materias = this.inscripciones[i].materias.split(',');
+                                this.inscripciones[i].idMateria = this.inscripciones[i].idMateria.split(',');
+                            }
+                        });
+                    });
+                },
+                nuevaInscripcion(){
+                    this.inscripcion.accion = 'nuevo';
+                    this.inscripcion.msg = '';
+                    this.inscripcion.mostrar_msg = false;
+                    this.inscripcion.alumno = '';
+                    this.inscripcion.materias = [];
+                }
+            },
+            created(){
+                db_sistema.transaction(tx=>{
+                    tx.executeSql('CREATE TABLE IF NOT EXISTS inscripciones (idInscripcion INTEGER PRIMARY KEY AUTOINCREMENT, idAlumno INTEGER, idMateria INTEGER, FOREIGN KEY(idAlumno) REFERENCES alumnos(idAlumno), FOREIGN KEY(idMateria) REFERENCES materias(idMateria))', [], (tx, res)=>{
+                        this.obtenerInscripciones();
+                    });
+                }, err=>{
+                    console.log(err);
+                });
+                this.obtenerMaterias();
+                this.obtenerAlumnos();
+                this.obtenerInscripciones();
+            }
+        });
+    </script>
+</body>
+</html>
