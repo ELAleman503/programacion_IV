@@ -1,1 +1,1 @@
-# Repositorio para programacion IV 2022
+# Laboratorio #2
